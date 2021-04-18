@@ -11,12 +11,13 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
     />
-    <title>My Traveling Wish List</title>
+    <link rel="stylesheet" href="index.css" />
+    <title>Travelist - My Traveling Wishlist</title>
   </head>
   <body>
     <section class="hero is-info">
-      <div class="hero-body">
-        <p class="title">My Traveling Wish List</p>
+      <div class="hero-body has-background-black">
+        <p class="title">Travelist</p>
         <p class="subtitle">Which country should I visit next time?</p>
       </div>
     </section>
@@ -34,7 +35,48 @@
             </span>
           </p>
           <div class="control">
-            <a class="button is-info"> Add </a>
+            <a class="button is-info has-background-black" id="add-country">
+              Add
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="columns">
+          <div class="column">
+            <div class="card">
+              <div class="card-header has-background-black has-text-white">
+                <div class="card-header-title has-text-white">Wishlist</div>
+                <div class="card-header-icon"><i class="fas fa-heart"></i></div>
+              </div>
+              <div class="card-content p-0" id="wishlist"></div>
+              <div class="card-footer has-background-black has-text-white">
+                <p class="help card-footer-item">
+                  Click on any country from the list to see more info...
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="card">
+              <div class="card-header has-background-black has-text-white">
+                <div class="card-header-title has-text-white">More info...</div>
+                <div class="card-header-icon">
+                  <i class="fas fa-info-circle"></i>
+                </div>
+              </div>
+              <div class="card-content pl-4" id="info"></div>
+              <div class="card-footer has-background-black has-text-white">
+                <p class="help card-footer-item">
+                  Powered by&nbsp;
+                  <a href="https://restcountries.eu/" target="_blank">
+                    restcountries.eu
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
