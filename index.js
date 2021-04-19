@@ -1,5 +1,6 @@
 // Predefined list of countries
 const countryListAlpha2 = {
+  NOSENSE: "NOSENSE",
   AF: "Afghanistan",
   AL: "Albania",
   DZ: "Algeria",
@@ -281,36 +282,69 @@ addCountryBtn.addEventListener("click", () => {
 });
 
 const infoContainer = document.querySelector("#info");
-const countryClickedHandler = async (e) => {
-  const countryCode = e.target.textContent.split("-")[0];
-  const res = await fetch(
-    `https://restcountries.eu/rest/v2/alpha/${countryCode}`
-  );
-  const info = await res.json();
-  const html = `
-  <div class="media">
-  <div class="media-left">
-    <figure class="image is-48x48">
-      <img src="${info.flag}" alt="Placeholder image">
-    </figure>
-  </div>
-  <div class="media-content">
-    <p class="title is-4">${info.name}</p>
-    <p class="subtitle is-6">${info.region}</p>
-  </div>
-</div>
 
-<div class="content">
-    <ul>
-    <li><b>Capital</b>: ${info.capital}</li>
-    <li><b>Area</b>: ${info.area}</li>
-    <li><b>Population</b>: ${info.population}</li>
-    <li><b>Language(s)</b>: ${info.languages
-      .map((lg) => lg.name)
-      .join(" | ")}</li>
-    <li><b>Timezone(s)</b>: ${info.timezones.join(" | ")}</li>
-    </ul>
-</div>`;
-  infoContainer.innerHTML = html;
-  console.log(info);
+const countryClickedHandler = async (e) => {
+  let html;
+  try {
+    const countryCode = e.target.textContent.split("-")[0];
+    // add progress bar
+    html = `<progress class="progress is-medium is-dark" max="100">45%</progress>
+  `;
+    infoContainer.innerHTML = html;
+
+    // intentional delay for three seconds...
+    await sleep(3000);
+
+    // get the info and display them..
+    const info = await fetchCountryInfo(countryCode);
+    html = `
+    <div class="media">
+      <div class="media-left">
+        <figure class="image is-48x48">
+          <img src="${info.flag}" alt="Placeholder image">
+        </figure>
+      </div>
+      <div class="media-content">
+        <p class="title is-4">${info.name}</p>
+        <p class="subtitle is-6">${info.region}</p>
+      </div>
+    </div>
+
+    <div class="content">
+        <ul>
+        <li><b>Capital</b>: ${info.capital}</li>
+        <li><b>Area</b>: ${info.area} km<sup>2</sup></li>
+        <li><b>Population</b>: ${info.population} people</li>
+        <li><b>Language(s)</b>: ${info.languages
+          .map((lg) => lg.name)
+          .join(" | ")}</li>
+        <li><b>Currencies(s)</b>: ${info.currencies
+          .map((cur) => `${cur.name}(${cur.code} - ${cur.symbol})`)
+          .join(" | ")}</li>
+        <li><b>Timezone(s)</b>: ${info.timezones.join(" | ")}</li>
+        </ul>
+    </div>`;
+
+    infoContainer.innerHTML = html;
+  } catch (error) {
+    html = `<div class="notification is-danger">
+             ${error.message}
+            </div>`;
+    infoContainer.innerHTML = html;
+  }
 };
+
+const fetchCountryInfo = async (code) => {
+  // fetch the data
+  const res = await fetch(`https://restcountries.eu/rest/v2/alpha/${code}`);
+  // Country not found
+  if (!res.ok) throw Error(`Sorry! No info has been found for this country.`);
+
+  // Was ok...and country found
+  const data = await res.json();
+  return data;
+};
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
