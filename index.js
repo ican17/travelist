@@ -1,4 +1,4 @@
-// Predefined list of countries
+// STEP 01: Predefined list of countries
 const countryListAlpha2 = {
   NOSENSE: "NOSENSE",
   AF: "Afghanistan",
@@ -252,10 +252,16 @@ const countryListAlpha2 = {
   AX: "Åland Islands",
 };
 
+// STEP 01: wish list
+let wishlist = [];
+
+// STEP 03 : init
+wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+
 // Get the country select element
 const countriesSelectElm = document.querySelector("#countries");
 
-// Populate countries to the country select element
+// STEP 01: Populate countries to the country select element
 for (const key in countryListAlpha2) {
   const countryOptionElement = document.createElement("option");
   countryOptionElement.value = key;
@@ -263,67 +269,110 @@ for (const key in countryListAlpha2) {
   countriesSelectElm.appendChild(countryOptionElement);
 }
 
-// Get some elements
+// STEP 01: Get some other elements
 const addCountryBtn = document.querySelector("#add-country");
 const wishlistContainer = document.querySelector("#wishlist");
+const notificationContainer = document.querySelector("#notification");
 
-// add the event listener to the add button
+// STEP 01: add the event listener to the add button so that the country will be wishlisted
 addCountryBtn.addEventListener("click", () => {
+  // remove any prior notifications...
+  notificationContainer.innerText = "";
+
+  // get the selected item
   const selectedItem =
     countriesSelectElm.options[countriesSelectElm.selectedIndex];
-  if (selectedItem.value != 0) {
-    const newCountryElm = document.createElement("div");
-    const html = `<h2 class="pl-4 py-4 my-1 has-background-grey-light has-text-black">${selectedItem.value}- ${selectedItem.text}</h2>`;
-    newCountryElm.innerHTML = html;
-    wishlistContainer.appendChild(newCountryElm);
 
-    newCountryElm.addEventListener("click", countryClickedHandler);
+  if (selectedItem.value != 0) {
+    // if another value has been selected other than the default one
+    if (!wishlist.includes(selectedItem.value)) {
+      // if the country hasn't been added before
+
+      // add the code to the wishlist array
+      wishlist.push(selectedItem.value);
+
+      // create the country dom element and append it to the container
+      const newCountryElm = document.createElement("div");
+      const html = `<h2 class="pl-4 py-4 my-1 has-background-grey-light has-text-black">${selectedItem.value}- ${selectedItem.text}
+        <span class="tag is-danger" style="cursor: pointer;">
+          Delete
+        </span>
+      </h2>`;
+      newCountryElm.innerHTML = html;
+      wishlistContainer.appendChild(newCountryElm);
+      // add event handler that fires whenever the delete button is clicked:
+      newCountryElm
+        .querySelector("span")
+        .addEventListener("click", deleteCountryHandler);
+      // STEP 02: add an event handler that fires whenever the element is clicked for fetching country info
+      newCountryElm.addEventListener("click", countryClickedHandler);
+    } else {
+      notificationContainer.innerText =
+        "This country has been already wishlisted.";
+    }
+  } else {
+    notificationContainer.innerText =
+      "Please, make sure to select a country from the list.";
   }
 });
 
+// STEP 01: country deletion from the list handler
+const deleteCountryHandler = (e) => {
+  e.stopPropagation();
+  const code = e.target.parentNode.textContent.split("-")[0];
+  const index = wishlist.findIndex((countryCode) => countryCode == code);
+  wishlist.splice(index, 1);
+  e.target.parentNode.parentNode.remove();
+};
+
+// STEP 02: get the info container dom element
 const infoContainer = document.querySelector("#info");
 
+// STEP 02:  the country clicked handler
 const countryClickedHandler = async (e) => {
+  // remove any prior notifications...
+  notificationContainer.innerText = "";
   let html;
   try {
     const countryCode = e.target.textContent.split("-")[0];
+    // if the country hasn't been added before
     // add progress bar
     html = `<progress class="progress is-medium is-dark" max="100">45%</progress>
   `;
     infoContainer.innerHTML = html;
 
     // intentional delay for three seconds...
-    await sleep(3000);
+    await wait(1000);
 
     // get the info and display them..
     const info = await fetchCountryInfo(countryCode);
     html = `
-    <div class="media">
-      <div class="media-left">
-        <figure class="image is-48x48">
-          <img src="${info.flag}" alt="Placeholder image">
-        </figure>
-      </div>
-      <div class="media-content">
-        <p class="title is-4">${info.name}</p>
-        <p class="subtitle is-6">${info.region}</p>
-      </div>
-    </div>
+              <div class="media">
+                <div class="media-left">
+                  <figure class="image is-48x48">
+                    <img src="${info.flag}" alt="Placeholder image">
+                  </figure>
+                </div>
+                <div class="media-content">
+                  <p class="title is-4">${info.name}</p>
+                  <p class="subtitle is-6">${info.region}</p>
+                </div>
+              </div>
 
-    <div class="content">
-        <ul>
-        <li><b>Capital</b>: ${info.capital}</li>
-        <li><b>Area</b>: ${info.area} km<sup>2</sup></li>
-        <li><b>Population</b>: ${info.population} people</li>
-        <li><b>Language(s)</b>: ${info.languages
-          .map((lg) => lg.name)
-          .join(" | ")}</li>
-        <li><b>Currencies(s)</b>: ${info.currencies
-          .map((cur) => `${cur.name}(${cur.code} - ${cur.symbol})`)
-          .join(" | ")}</li>
-        <li><b>Timezone(s)</b>: ${info.timezones.join(" | ")}</li>
-        </ul>
-    </div>`;
+              <div class="content">
+                  <ul>
+                  <li><b>Capital</b>: ${info.capital}</li>
+                  <li><b>Area</b>: ${info.area} km<sup>2</sup></li>
+                  <li><b>Population</b>: ${info.population} people</li>
+                  <li><b>Language(s)</b>: ${info.languages
+                    .map((lg) => lg.name)
+                    .join(" | ")}</li>
+                  <li><b>Currencies(s)</b>: ${info.currencies
+                    .map((cur) => `${cur.name}(${cur.code} - ${cur.symbol})`)
+                    .join(" | ")}</li>
+                  <li><b>Timezone(s)</b>: ${info.timezones.join(" | ")}</li>
+                  </ul>
+              </div>`;
 
     infoContainer.innerHTML = html;
   } catch (error) {
@@ -334,9 +383,11 @@ const countryClickedHandler = async (e) => {
   }
 };
 
+// STEP 02: function that fetchs the country info from a third-party RESTFul api
 const fetchCountryInfo = async (code) => {
   // fetch the data
   const res = await fetch(`https://restcountries.eu/rest/v2/alpha/${code}`);
+
   // Country not found
   if (!res.ok) throw Error(`Sorry! No info has been found for this country.`);
 
@@ -345,6 +396,7 @@ const fetchCountryInfo = async (code) => {
   return data;
 };
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// STEP 02: A function to make the code execution wait for some x time...
+function wait(x) {
+  return new Promise((resolve) => setTimeout(resolve, x));
 }
