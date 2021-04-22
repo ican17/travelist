@@ -252,11 +252,14 @@ const countryListAlpha2 = {
   AX: "Åland Islands",
 };
 
-// STEP 01: wish list
+// STEP 01: wishlist
 let wishlist = [];
 
-// STEP 03 : init
-wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+// STEP 03 : get the wishlited items from the localstorage
+if (!localStorage.getItem("wishlist")) {
+  localStorage.setItem("wishlist", JSON.stringify([]));
+}
+wishlist = JSON.parse(localStorage.getItem("wishlist"));
 
 // Get the country select element
 const countriesSelectElm = document.querySelector("#countries");
@@ -274,6 +277,12 @@ const addCountryBtn = document.querySelector("#add-country");
 const wishlistContainer = document.querySelector("#wishlist");
 const notificationContainer = document.querySelector("#notification");
 
+// STEP 04: function to update the log in the sessionStorage
+const addEventToSessionLog = (event, name) => {
+  log.push({ eventType: event, countryName: name });
+  sessionStorage.setItem("log", JSON.stringify(log));
+};
+
 // STEP 01: add the event listener to the add button so that the country will be wishlisted
 addCountryBtn.addEventListener("click", () => {
   // remove any prior notifications...
@@ -288,24 +297,19 @@ addCountryBtn.addEventListener("click", () => {
     if (!wishlist.includes(selectedItem.value)) {
       // if the country hasn't been added before
 
-      // add the code to the wishlist array
+      // add the country code to the wishlist array
       wishlist.push(selectedItem.value);
 
-      // create the country dom element and append it to the container
-      const newCountryElm = document.createElement("div");
-      const html = `<h2 class="pl-4 py-4 my-1 has-background-grey-light has-text-black">${selectedItem.value}- ${selectedItem.text}
-        <span class="tag is-danger" style="cursor: pointer;">
-          Delete
-        </span>
-      </h2>`;
-      newCountryElm.innerHTML = html;
-      wishlistContainer.appendChild(newCountryElm);
-      // add event handler that fires whenever the delete button is clicked:
-      newCountryElm
-        .querySelector("span")
-        .addEventListener("click", deleteCountryHandler);
-      // STEP 02: add an event handler that fires whenever the element is clicked for fetching country info
-      newCountryElm.addEventListener("click", countryClickedHandler);
+      // STEP 03: update the wishlist in the localStorage
+      localStorage.setItem("wishlist", JSON.stringify(wishlist));
+
+      // STEP 01: create and append the dom country element to the wishlist container
+      appendCountryElm(selectedItem.value, selectedItem.text);
+
+      // STEP 04: add to the session log
+      appendLoggingElm("add", selectedItem.text);
+      // STEP 04: add event to the sessionStorage
+      addEventToSessionLog("add", selectedItem.text);
     } else {
       notificationContainer.innerText =
         "This country has been already wishlisted.";
@@ -323,10 +327,56 @@ const deleteCountryHandler = (e) => {
   const index = wishlist.findIndex((countryCode) => countryCode == code);
   wishlist.splice(index, 1);
   e.target.parentNode.parentNode.remove();
+
+  // STEP 03: update the wishlist in the localStorage
+  localStorage.setItem("wishlist", JSON.stringify(wishlist));
+
+  // STEP 04: add to the session log
+  appendLoggingElm("delete", countryListAlpha2[code]);
+  // STEP 04: add event to the sessionStorage
+  addEventToSessionLog("delete", countryListAlpha2[code]);
+};
+
+// STEP 01: function to append a dom country element to the wishlist container
+const appendCountryElm = (code, name) => {
+  // create the country dom element and append it to the container
+  const newCountryElm = document.createElement("div");
+  const html = `<h2 class="pl-4 py-4 my-1 has-background-grey-light has-text-black">${code}- ${name}
+  <span class="tag is-danger" style="cursor: pointer;">
+    Delete
+  </span>
+</h2>`;
+  newCountryElm.innerHTML = html;
+  wishlistContainer.appendChild(newCountryElm);
+
+  // add event handler that fires whenever the delete button is clicked:
+  newCountryElm
+    .querySelector("span")
+    .addEventListener("click", deleteCountryHandler);
+  // STEP 02: add an event handler that fires whenever the element is clicked for fetching country info
+  newCountryElm.addEventListener("click", countryClickedHandler);
 };
 
 // STEP 02: get the info container dom element
 const infoContainer = document.querySelector("#info");
+
+// STEP 02: function that fetchs the country info from a third-party RESTFul api
+const fetchCountryInfo = async (code) => {
+  // fetch the data
+  const res = await fetch(`https://restcountries.eu/rest/v2/alpha/${code}`);
+
+  // Country not found
+  if (!res.ok) throw Error(`Sorry! No info has been found for this country.`);
+
+  // Was ok...and country found
+  const data = await res.json();
+  return data;
+};
+
+// STEP 02: A function to make the code execution wait for some x time...
+function wait(x) {
+  return new Promise((resolve) => setTimeout(resolve, x));
+}
 
 // STEP 02:  the country clicked handler
 const countryClickedHandler = async (e) => {
@@ -375,6 +425,11 @@ const countryClickedHandler = async (e) => {
               </div>`;
 
     infoContainer.innerHTML = html;
+
+    // STEP 04: add to the session log
+    appendLoggingElm("fetch", countryListAlpha2[countryCode]);
+    // STEP 04: add event to the sessionStorage
+    addEventToSessionLog("fetch", countryListAlpha2[countryCode]);
   } catch (error) {
     html = `<div class="notification is-danger">
              ${error.message}
@@ -383,20 +438,75 @@ const countryClickedHandler = async (e) => {
   }
 };
 
-// STEP 02: function that fetchs the country info from a third-party RESTFul api
-const fetchCountryInfo = async (code) => {
-  // fetch the data
-  const res = await fetch(`https://restcountries.eu/rest/v2/alpha/${code}`);
+// STEP 01: Populate the wishlist
+for (const countryCode of wishlist) {
+  appendCountryElm(countryCode, countryListAlpha2[countryCode]);
+}
 
-  // Country not found
-  if (!res.ok) throw Error(`Sorry! No info has been found for this country.`);
+// STEP 04: get the session log container element
+const sessionLogContainer = document.querySelector("#log");
 
-  // Was ok...and country found
-  const data = await res.json();
-  return data;
+// STEP 04 : get the logging items from the sessionStorage
+if (!sessionStorage.getItem("log")) {
+  sessionStorage.setItem("log", JSON.stringify([]));
+}
+const log = JSON.parse(sessionStorage.getItem("log"));
+
+// STEP 04: function to create and append a dom sesion logging element
+const appendLoggingElm = (eventType, name) => {
+  formattedName = `<b>${name.toUpperCase()}</b>`;
+  let msg;
+  switch (eventType) {
+    case "add":
+      msg = `I have wishlisted ${formattedName}.`;
+      break;
+    case "delete":
+      msg = `I have removed ${formattedName} from my wishlist.`;
+      break;
+    case "fetch":
+      msg = `I have looked up more info about ${formattedName}.`;
+      break;
+  }
+  // Date & time
+  var dt = new Date();
+  var dateTime = dt.toLocaleString();
+  // create the country dom element and append it to the container
+  const newLoggingElm = document.createElement("div");
+  const html = `<h2 class="pl-2 py-2 my-1 has-background-grey-light has-text-black">
+                  <span class="tag is-info" style="cursor: pointer;">
+                    ${dateTime}
+                  </span>
+                  # ${msg}</h2>`;
+  newLoggingElm.innerHTML = html;
+  sessionLogContainer.appendChild(newLoggingElm);
 };
 
-// STEP 02: A function to make the code execution wait for some x time...
-function wait(x) {
-  return new Promise((resolve) => setTimeout(resolve, x));
+// STEP 04: populate the session log
+log.forEach((item) => appendLoggingElm(item.eventType, item.countryName));
+
+// STEP 05: function that calculate distance between two points
+function distance(lat1, lat2, lon1, lon2) {
+  // convert to radians as JavaScript Math works with radians instead of degrees !
+  lon1 = (lon1 * Math.PI) / 180;
+  lon2 = (lon2 * Math.PI) / 180;
+  lat1 = (lat1 * Math.PI) / 180;
+  lat2 = (lat2 * Math.PI) / 180;
+
+  // Radius of earth in kilometers. Use 3956
+  // for miles
+  const r = 6371;
+
+  // Haversine formula
+  const dlon = lon2 - lon1;
+  const dlat = lat2 - lat1;
+  const a =
+    Math.pow(Math.sin(dlat / 2), 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dlon / 2), 2);
+
+  // calculate the result
+  const d = 2 * r * Math.asin(Math.sqrt(a));
+
+  return d;
 }
+
+console.log(distance(28.0339, 37.0902, 1.6596, 95.7129));
