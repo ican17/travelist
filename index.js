@@ -337,12 +337,74 @@ const deleteCountryHandler = (e) => {
   addEventToSessionLog("delete", countryListAlpha2[code]);
 };
 
+//STEP 06: dragStart handler
+const dragStartHandler = (e) => {
+  // Add the target element's id to the data transfer object
+  e.dataTransfer.setData("text/plain", e.target.id);
+  // For cursor state
+  e.dataTransfer.effectAllowed = "move";
+};
+
+function dragOverHandler(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  // Get the target element
+  const targetElm =
+    e.target.nodeName === "H2"
+      ? e.target.parentNode
+      : e.target.parentNode.parentNode;
+  // Set a style
+  targetElm.childNodes[0].classList.remove("has-background-grey-light");
+}
+
+function dragLeaveHandler(e) {
+  e.preventDefault();
+  // Get the target element
+  const targetElm =
+    e.target.nodeName === "H2"
+      ? e.target.parentNode
+      : e.target.parentNode.parentNode;
+  // Sett a style
+  targetElm.childNodes[0].classList.add("has-background-grey-light");
+}
+function dropHandler(e) {
+  e.preventDefault();
+  // Get the target element
+  const targetElm =
+    e.target.nodeName === "H2"
+      ? e.target.parentNode
+      : e.target.parentNode.parentNode;
+
+  // Get the id of the target and add the moved element to the target's DOM
+  const sourceElmId = e.dataTransfer.getData("text/plain");
+  // Get the source element
+  const sourceElm = document.getElementById(sourceElmId);
+
+  // Get source and target elements idexes in the children collection of the container
+  const sourceIndex = [...wishlistContainer.children].indexOf(sourceElm);
+  const targetIndex = [...wishlistContainer.children].indexOf(targetElm);
+
+  // Move the element
+  if (sourceIndex < targetIndex)
+    targetElm.insertAdjacentElement("afterend", sourceElm);
+  if (sourceIndex > targetIndex)
+    targetElm.insertAdjacentElement("beforebegin", sourceElm);
+
+  // Reset the style of the target
+  targetElm.childNodes[0].classList.remove("has-background-black");
+  targetElm.childNodes[0].classList.add("has-background-grey-light");
+}
 // STEP 01: function to append a dom country element to the wishlist container
 const appendCountryElm = (code, name) => {
   // create the country dom element and append it to the container
   const newCountryElm = document.createElement("div");
+  newCountryElm.id = code;
+
+  // STEP 06: set the element as draggable
+  newCountryElm.setAttribute("draggable", "true");
+
   const html = `<h2 class="pl-4 py-4 my-1 has-background-grey-light has-text-black">${code}- ${name}
-  <span class="tag is-danger" style="cursor: pointer;">
+  <span class="tag is-danger is-pulled-right mr-4" style="cursor: pointer;">
     Delete
   </span>
 </h2>`;
@@ -355,6 +417,12 @@ const appendCountryElm = (code, name) => {
     .addEventListener("click", deleteCountryHandler);
   // STEP 02: add an event handler that fires whenever the element is clicked for fetching country info
   newCountryElm.addEventListener("click", countryClickedHandler);
+
+  // STEP 06: add an event handlers that fire whenever the user start dragging the element
+  newCountryElm.addEventListener("dragstart", dragStartHandler);
+  newCountryElm.addEventListener("dragover", dragOverHandler);
+  newCountryElm.addEventListener("dragleave", dragLeaveHandler);
+  newCountryElm.addEventListener("drop", dropHandler);
 };
 
 // STEP 02: get the info container dom element
@@ -376,6 +444,31 @@ const fetchCountryInfo = async (code) => {
 // STEP 02: A function to make the code execution wait for some x time...
 function wait(x) {
   return new Promise((resolve) => setTimeout(resolve, x));
+}
+
+// STEP 05: function that calculate distance between two points
+function distance(lat1, lat2, lon1, lon2) {
+  // convert to radians as JavaScript Math works with radians instead of degrees !
+  lon1 = (lon1 * Math.PI) / 180;
+  lon2 = (lon2 * Math.PI) / 180;
+  lat1 = (lat1 * Math.PI) / 180;
+  lat2 = (lat2 * Math.PI) / 180;
+
+  // Radius of earth in kilometers. Use 3956
+  // for miles
+  const r = 6371;
+
+  // Haversine formula
+  const dlon = lon2 - lon1;
+  const dlat = lat2 - lat1;
+  const a =
+    Math.pow(Math.sin(dlat / 2), 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dlon / 2), 2);
+
+  // calculate the result
+  const d = 2 * r * Math.asin(Math.sqrt(a));
+
+  return d;
 }
 
 // STEP 02:  the country clicked handler
@@ -421,6 +514,11 @@ const countryClickedHandler = async (e) => {
                     .map((cur) => `${cur.name}(${cur.code} - ${cur.symbol})`)
                     .join(" | ")}</li>
                   <li><b>Timezone(s)</b>: ${info.timezones.join(" | ")}</li>
+                  <li><b>How far is it?</b>: 
+                      <span id="show-distance" class="tag is-info" style="cursor: pointer;">
+                        show
+                      </span>
+                  </li>
                   </ul>
               </div>`;
 
@@ -428,8 +526,50 @@ const countryClickedHandler = async (e) => {
 
     // STEP 04: add to the session log
     appendLoggingElm("fetch", countryListAlpha2[countryCode]);
+
     // STEP 04: add event to the sessionStorage
     addEventToSessionLog("fetch", countryListAlpha2[countryCode]);
+
+    // STEP 05: show distance
+    const showDistancContainer = document.querySelector("#show-distance");
+    showDistancContainer.addEventListener("click", () => {
+      if (navigator.geolocation) {
+        // check if it is supported by the browser
+        // on success
+        const success = (position) => {
+          // Get my actual position coords
+          let { latitude, longitude } = position.coords;
+          let [destinationLat, destinationLong] = info.latlng;
+          result = distance(
+            latitude,
+            destinationLat,
+            longitude,
+            destinationLong
+          );
+          showDistancContainer.innerText = `${result.toFixed(2)} km`;
+        };
+        const error = (error) => {
+          showDistancContainer.classList.remove("is-info");
+          showDistancContainer.classList.add("is-danger");
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              showDistancContainer.innerText =
+                "You have denied the request for Geolocation.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              showDistancContainer.innerText =
+                "Location information is unavailable.";
+              break;
+            case error.UNKNOWN_ERROR:
+              showDistancContainer.innerText = "An unknown error occurred.";
+              break;
+          }
+        };
+        navigator.geolocation.getCurrentPosition(success, error);
+      } else {
+        result = "Geolocation is not supported by this browser.";
+      }
+    });
   } catch (error) {
     html = `<div class="notification is-danger">
              ${error.message}
@@ -483,30 +623,3 @@ const appendLoggingElm = (eventType, name) => {
 
 // STEP 04: populate the session log
 log.forEach((item) => appendLoggingElm(item.eventType, item.countryName));
-
-// STEP 05: function that calculate distance between two points
-function distance(lat1, lat2, lon1, lon2) {
-  // convert to radians as JavaScript Math works with radians instead of degrees !
-  lon1 = (lon1 * Math.PI) / 180;
-  lon2 = (lon2 * Math.PI) / 180;
-  lat1 = (lat1 * Math.PI) / 180;
-  lat2 = (lat2 * Math.PI) / 180;
-
-  // Radius of earth in kilometers. Use 3956
-  // for miles
-  const r = 6371;
-
-  // Haversine formula
-  const dlon = lon2 - lon1;
-  const dlat = lat2 - lat1;
-  const a =
-    Math.pow(Math.sin(dlat / 2), 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.pow(Math.sin(dlon / 2), 2);
-
-  // calculate the result
-  const d = 2 * r * Math.asin(Math.sqrt(a));
-
-  return d;
-}
-
-console.log(distance(28.0339, 37.0902, 1.6596, 95.7129));
